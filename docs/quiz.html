@@ -1,1 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
 
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Quiz App</title>
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            font-family: Gotham Rounded;
+        }
+
+        :root {
+            --hue-neutral: 200;
+            --hue-wrong: 0;
+            --hue-correct: 145;
+        }
+
+        body {
+            --hue: var(--hue-neutral);
+            padding: 0;
+            margin: 0;
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            justify-content: center;
+            align-items: center;
+            /* background-color: hsl(var(--hue), 100%, 20%); */
+            background-image: url("cat.jpg");
+            background-size: 150px;
+            background-repeat: repeat;
+        }
+
+        body.correct {
+            --hue: var(--hue-correct);
+        }
+
+        body.wrong {
+            --hue: var(--hue-wrong);
+        }
+
+        .container {
+            width: 800px;
+            max-width: 80%;
+            background-color: white;
+            border-radius: 5px;
+            padding: 10px;
+            box-shadow: 0 0 10px 2px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .btn-grid {
+            display: grid;
+            grid-template-columns: repeat(2, auto);
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .btn {
+            --hue: var(--hue-neutral);
+            border: 1px solid hsl(var(--hue), 100%, 30%);
+            background-color: hsl(var(--hue), 100%, 50%);
+            border-radius: 5px;
+            padding: 5px 10px;
+            color: white;
+            outline: none;
+        }
+
+        .btn:hover {
+            border-color: black;
+        }
+
+        .btn.correct {
+            --hue: var(--hue-correct);
+            color: black;
+        }
+
+        .btn.wrong {
+            --hue: var(--hue-wrong);
+        }
+
+        .start-btn,
+        .next-btn,
+        .back-btn,
+        .res-btn {
+            font-size: 1.5rem;
+            font-weight: bold;
+            padding: 10px 20px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .hide {
+            display: none;
+        }
+
+        #info {
+            border: 5px groove purple;
+            border-radius: 3px;
+            background-color: lavender;
+            /* box-shadow: 5px 8px 10px greenyellow; */
+            margin: 10px;
+            padding: 10px;
+        }
+
+        #question {
+            border: 2px ridge orangered;
+            border-radius: 3px;
+            background-color: rgba(255, 166, 0, 0.418);
+            margin: 10px;
+            padding: 10px;
+        }
+
+        .options {
+            border: 5px groove peru;
+            margin: 10px;
+            padding: 10px;
+        }
+    </style>
+    <script>
+
+        // Add an event listener for the DOMContentLoaded event
+        window.addEventListener("DOMContentLoaded", domLoaded);
+
+        function domLoaded() {
+            const startButton = document.getElementById('start-btn')
+            const nextButton = document.getElementById('next-btn')
+            const backButton = document.getElementById('back-btn')  // additional back button
+            const questionContainerElement = document.getElementById('question-container')
+            const questionElement = document.getElementById('question')
+            const answerButtonsElement = document.getElementById('answer-buttons')
+            const optionsContainer = document.getElementsByClassName("options")[0]
+            const restartButton = document.getElementById('res-btn')
+            const shuffleButton = document.getElementById('shuffle-btn')
+            const timerButton = document.getElementById('timer-btn')
+            const correctButton = document.getElementById("correct-btn")
+            let timeElapsed = 0
+            startButton.addEventListener('click', startGame) // why are you so important
+            restartButton.addEventListener('click', restartGame)
+            let shuffledQuestions, currentQuestionIndex
+            let correctQuestions = []
+            //using the domLoaded function because the buttons need to be rendered before we can
+            //add an event listener
+            nextButton.addEventListener('click', () => {
+                currentQuestionIndex++
+                setNextQuestion()
+            })
+
+            // event listener for the new back button
+            backButton.addEventListener('click', () => {
+                currentQuestionIndex--
+                setPrevQuestion()
+            })
+
+            function restartGame() {
+                optionsContainer.classList.remove("hide")
+                questionContainerElement.classList.add("hide")
+                resetState()
+                restartButton.classList.add("hide")
+                startButton.classList.remove("hide")
+                if (timerButton.checked) {
+                    stopClock()
+                    document.getElementById("date-span").remove()
+                }
+                if (correctButton.checked) {
+                    correctQuestions.forEach(correct => { questions.splice(questions.indexOf(correct), 1) })
+                }
+            }
+
+            // allow user to configure options
+            function gameOptions() {
+                // a. enable/disable card shuffling (default shuffled)
+                shuffled = shuffleButton.checked
+                startButton.addEventListener('click', startGame)
+            }
+
+            function startGame() {
+                startButton.classList.add('hide')
+                restartButton.classList.add('hide')
+                optionsContainer.classList.add('hide'); // remove the game options
+
+                if (questions.length == 0) {
+                    correctQuestions.forEach(q => questions.push(q))
+                }
+
+                shuffledQuestions = []
+                if (!shuffleButton.checked) {
+                    questions.forEach(question => shuffledQuestions.push(question))
+                }
+                else {
+                    questions.forEach(question => shuffledQuestions.push(question))
+                    shuffledQuestions.sort(() => Math.random() - .5)
+                }
+                if (timerButton.checked) {
+                    setTimer()
+                }
+                if (correctButton.checked) {
+                    //remove correct answered questions from question set
+
+                }
+                currentQuestionIndex = 0
+                questionContainerElement.classList.remove('hide')
+                setNextQuestion()
+            }
+
+            function setNextQuestion() {
+                resetState()
+                showQuestion(shuffledQuestions[currentQuestionIndex])
+            }
+
+            // function to set the previous question as the current question
+            function setPrevQuestion() {
+                if (currentQuestionIndex == 1) {
+                    return
+                }
+                resetState()
+                showQuestion(shuffledQuestions[currentQuestionIndex--])     // show the question from the previous index
+            }
+
+            function showQuestion(question) {
+                questionElement.innerText = question.question
+                question.answers.forEach(answer => {
+                    const button = document.createElement('button')
+                    button.innerText = answer.text
+                    button.classList.add('btn')
+                    if (answer.correct) {
+                        button.dataset.correct = answer.correct
+                    }
+                    button.addEventListener('click', selectAnswer)
+                    answerButtonsElement.appendChild(button)
+                })
+            }
+
+            function resetState() {
+                clearStatusClass(document.body)
+                nextButton.classList.add('hide')
+                backButton.classList.add('hide')
+                removeMoreInfo()    // remove the more info card
+                while (answerButtonsElement.firstChild) {
+                    answerButtonsElement.removeChild(answerButtonsElement.firstChild)
+                }
+            }
+
+            function selectAnswer(e) {
+                const selectedButton = e.target
+                const correct = selectedButton.dataset.correct
+                setStatusClass(document.body, correct)
+                Array.from(answerButtonsElement.children).forEach(button => {
+                    setStatusClass(button, button.dataset.correct)
+                })
+                if (correctButton.checked && correct) {
+                    correctQuestions.push(questions[currentQuestionIndex])
+                }
+                if (shuffledQuestions.length > currentQuestionIndex + 1) {
+                    nextButton.classList.remove('hide')
+                    if (currentQuestionIndex >= 1) {
+                        backButton.classList.remove('hide') // show the back button if there is a prev question
+                    }
+                } else {
+                    backButton.classList.remove('hide')
+                }
+
+                if (shuffledQuestions.length == currentQuestionIndex + 1) {
+                    restartButton.classList.remove('hide')
+                }
+                addInfoDiv() // add info card
+            }
+
+            function setStatusClass(element, correct) {
+                clearStatusClass(element)
+                if (correct) {
+                    element.classList.add('correct')
+
+                } else {
+                    element.classList.add('wrong')
+                }
+            }
+
+            function clearStatusClass(element) {
+                element.classList.remove('correct')
+                element.classList.remove('wrong')
+            }
+
+            // add the more information card
+            function addInfoDiv() {
+                let infoDiv = document.createElement('div')
+                infoDiv.id = "info"
+                let container = document.getElementsByClassName("container")[0]
+                let newP = document.createElement('p')
+                // newP.textContent = "welcome to my house"
+                newP.textContent = questions[currentQuestionIndex].info
+                infoDiv.appendChild(newP)
+                container.insertBefore(infoDiv, document.getElementById('question-container'))
+            }
+
+            // remove the more information card
+            function removeMoreInfo() {
+                if (document.getElementById("info") != null) {
+                    document.getElementById("info").remove();
+                }
+            }
+
+            function setTimer() {
+                if (timerButton.checked) {
+                    startClock()
+                }
+                let timeDiv = document.createElement("div")
+                timeDiv.id = "date-span"
+                let newP = document.createElement("p")
+                newP.textContent = timeElapsed
+                timeDiv.appendChild(newP)
+                questionContainerElement.appendChild(timeDiv)
+            }
+
+            function startClock() {
+                clock = setInterval(updateClock, 1000);
+            }
+
+            function stopClock() {
+                clearInterval(clock);
+                timeElapsed = 0
+            }
+
+            function updateClock() {
+                document.getElementById("date-span").textContent = ++timeElapsed;
+                dateSpan = document.getElementById("date-span")
+                if (timeElapsed == 30 || timeElapsed == 32 || timeElapsed == 60 || timeElapsed == 62) {
+                    dateSpan.style.backgroundColor = "red"
+                }
+                else {
+                    dateSpan.style.backgroundColor = "white"
+                }
+            }
+
+            const questions = [
+                {
+                    question: 'Which film in the Paranormal Activity franchise was the most commercially successful?',
+                    answers: [
+                        { text: 'Paranormal Activity 1', correct: false },
+                        { text: 'Paranormal Activity 2', correct: false },
+                        { text: 'Paranormal Activity 3', correct: true },
+                        { text: 'Paranormal Activity 4', correct: false }
+                    ],
+                    info: "The film grossed over $200B worldwide"
+                },
+                {
+                    question: 'How many pounds of candy corn are produced each year?',
+                    answers: [
+                        { text: '35 million', correct: true },
+                        { text: '6 million', correct: false },
+                        { text: '4 billion', correct: false },
+                        { text: '66 million', correct: false },
+                    ],
+                    info: "35 million pounds of candy corn amounts to about 9 billion pieces of candy"
+                },
+                {
+                    question: 'What holiday surpasses Halloween in annual consumer sales?',
+                    answers: [
+                        { text: 'Valentine\'s Day', correct: false },
+                        { text: 'Thanksgiving', correct: false },
+                        { text: 'Christmas', correct: true },
+                        { text: 'Easter', correct: false },
+                    ],
+                    info: "Only one holiday surpasses Halloween for annual sales-- Christmas!"
+                },
+                {
+                    question: 'When is Halloween thought to have originated?',
+                    answers: [
+                        { text: '20 A.D', correct: false },
+                        { text: '4000 B.C.', correct: true },
+                        { text: '1200 A.D.', correct: false },
+                        { text: '1700 A.D.', correct: false },
+                    ],
+                    info: "Look's like we have always liked free candy."
+                },
+                {
+                    question: 'What ancient Roman goddess is said to be honored on Halloween?',
+                    answers: [
+                        { text: 'Juno', correct: false },
+                        { text: 'Vesta', correct: false },
+                        { text: 'Minerva', correct: false },
+                        { text: 'Pomona', correct: true },
+                    ],
+                    info: "Many believe bobbing for apples stemmed from Roman tradition to honor Pomona, the goddess of fruit and trees."
+                },
+                {
+                    question: 'What ancient Roman goddess is said to be honored on Halloween?',
+                    answers: [
+                        { text: 'Juno', correct: false },
+                        { text: 'Vesta', correct: false },
+                        { text: 'Minerva', correct: false },
+                        { text: 'Pomona', correct: true },
+                    ],
+                    info: "Many believe bobbing for apples stemmed from Roman tradition to honor Pomona, the goddess of fruit and trees."
+                },
+                {
+                    question: 'Where was the first city-wide Halloween celebration in the United States?',
+                    answers: [
+                        { text: 'Anoka, Minnesota', correct: true },
+                        { text: 'Kansas City, Missouri', correct: false },
+                        { text: 'Ithaca, New York', correct: false },
+                        { text: 'Akron, Ohio', correct: false },
+                    ],
+                    info: "Anoka is the \"Halloween Capital of the World\" becuase it hosted the first Halloween parade in 1920."
+                },
+                {
+                    question: 'What is the most commercially successful horror franchise of all time?',
+                    answers: [
+                        { text: 'Final Destination', correct: false },
+                        { text: 'Godzilla', correct: true },
+                        { text: 'Scream', correct: false },
+                        { text: 'Saw', correct: false },
+                    ],
+                    info: "Who doesn't love a giant nuclear lizard that lives in the depths."
+                },
+                {
+                    question: 'How many pieces of candy does the average house give to each trick-or-treater?',
+                    answers: [
+                        { text: '2', correct: true },
+                        { text: '4', correct: false },
+                        { text: '1', correct: false },
+                        { text: '6', correct: false },
+                    ],
+                    info: "Two pieces may not be much, but at least its more than one."
+                },
+                {
+                    question: 'What is the most popular Halloween candy in the US?',
+                    answers: [
+                        { text: 'M&Ms', correct: false },
+                        { text: 'Snickers', correct: false },
+                        { text: 'Skittles', correct: true },
+                        { text: 'Laffy Taffy', correct: false },
+                    ],
+                    info: "Taste the rainbow."
+                },
+            ]
+        }
+    </script>
+</head>
+
+<body>
+    <div class="container">
+
+        <div id="question-container" class="hide">
+            <div id="question">Question</div>
+            <div id="answer-buttons" class="btn-grid">
+                <button class="btn">Answer 1</button>
+                <button class="btn">Answer 2</button>
+                <button class="btn">Answer 3</button>
+                <button class="btn">Answer 4</button>
+            </div>
+        </div>
+        <div class="options">
+            <p>Options: </p>
+            <input type="checkbox" id="shuffle-btn" name="shuffle-btn" checked>
+            <label for="shuffle-btn">Shuffle Cards: </label>
+
+            <input type="checkbox" id="timer-btn" name="timer-btn">
+            <label for="timer-btn">Timed session: </label>
+
+            <input type="checkbox" id="correct-btn" name="correct-btn">
+            <label for="correct-btn">Remove Correct from Deck: </label>
+        </div>
+        <div class="controls">
+            <button id="start-btn" class="start-btn btn">Start</button>
+            <button id="back-btn" class="back-btn btn hide">Back</button>
+            <button id="next-btn" class="next-btn btn hide">Next</button>
+            <button id="res-btn" class="res-btn btn hide">Restart</button>
+        </div>
+    </div>
+</body>
+
+</html>
